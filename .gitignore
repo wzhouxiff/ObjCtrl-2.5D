@@ -1,0 +1,4 @@
+outputs/
+ckpt/
+checkpoints/*
+__pycache__/
