@@ -17,3 +17,15 @@ triton
 termcolor==2.4.0
 gradio-image-prompter==0.1.0
 hydra-core==1.3.2
+scipy
+plotly
+huggingface_hub==0.10.1
+iopath
+timm==0.6.13
+numpy==1.25.2
+accelerate==0.34.2
+pydantic==2.8.2
+starlette==0.37.2
+fastapi==0.111.1
+fastapi-cli==0.0.4
+av==13.0.0

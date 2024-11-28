@@ -115,8 +115,6 @@ def run(pipeline, device):
         #### preparing mask
         
         mask = Image.fromarray(mask)
-        mask.save(f'{cur_OUTPUT_PATH}/org_mask_big.png')
-        mask = Image.open(f'{cur_OUTPUT_PATH}/org_mask_big.png')
         mask = mask.resize((W, H))
         mask = np.array(mask).astype(np.float32)
         mask = np.expand_dims(mask, axis=-1)

@@ -190,7 +190,7 @@ def traj2cam(traj, depth, rescale):
     zc = []
     for i in range(num_frames):
         zc.append(r_depth[int(trajectory[i][1]), int(trajectory[i][0])])
-    print(f'zc: {zc}')
+    # print(f'zc: {zc}')
     
     ## norm zc
     zc_norm = np.array(zc)
@@ -202,8 +202,8 @@ def traj2cam(traj, depth, rescale):
     if zc_grad_std > zc_threshold:
         zc = [zc[0]] * num_frames
         
-    print(f'zc_grad_std: {zc_grad_std}, zc_threshold: {zc_threshold}')
-    print(f'zc: {zc}')
+    # print(f'zc_grad_std: {zc_grad_std}, zc_threshold: {zc_threshold}')
+    # print(f'zc: {zc}')
 
     traj_w2c = trajectory_to_camera_poses_v1(trajectory, intrinsics, num_frames, zc=zc) # numpy: [n_frame, 4, 4]
     RTs = traj_w2c[:, :3]
