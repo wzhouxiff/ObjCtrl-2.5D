@@ -15,4 +15,4 @@ wandb
 triton
 termcolor
 gradio-image-prompter
-hydra
+hydra-core
