@@ -1,3 +1,5 @@
+import spaces
+
 import gradio as gr
 from PIL import Image
 import numpy as np
@@ -50,6 +52,7 @@ def process_image(raw_image):
 def get_subject_points(canvas):
     return canvas["image"], canvas["points"]
 
+@spaces.GPU(duration=50)
 def run_segment(segmentor):
     def segment(canvas, image, logits):
         if logits is not None:
@@ -142,6 +145,7 @@ def get_points(img,
 def undo_points(original_image):
     return original_image, []
 
+@spaces.GPU(duration=50)
 def run_depth(d_model_NK):
     def get_depth(image, points):
         

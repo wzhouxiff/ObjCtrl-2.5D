@@ -1,3 +1,5 @@
+import spaces
+
 import os
 import torch
 import numpy as np
@@ -39,6 +41,7 @@ down_scale = 8
 H, W = height // down_scale, width // down_scale
 K = np.array([[width / down_scale, 0, W / 2], [0, width / down_scale, H / 2], [0, 0, 1]])
 
+@spaces.GPU(duration=50)
 def run(pipeline, device):
     def run_objctrl_2_5d(condition_image, 
                          mask, 
