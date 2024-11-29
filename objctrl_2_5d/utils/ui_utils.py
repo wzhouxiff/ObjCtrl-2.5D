@@ -1,14 +1,9 @@
-import spaces
-
 import gradio as gr
 from PIL import Image
 import numpy as np
 
 from copy import deepcopy
 import cv2
-import torch
-
-from ZoeDepth.zoedepth.utils.misc import colorize
 
 from objctrl_2_5d.utils.vis_camera import vis_camera_rescale
 from objctrl_2_5d.utils.objmask_util import trajectory_to_camera_poses_v1
@@ -101,27 +96,6 @@ def get_points(img,
 # clear all handle/target points
 def undo_points(original_image):
     return original_image, []
-
-@spaces.GPU(duration=50)
-def run_depth(d_model_NK):
-    def get_depth(image, points):
-        
-        depth = d_model_NK.infer_pil(image)    
-        colored_depth = colorize(depth, cmap='gray_r') # [h, w, 4] 0-255
-        
-        depth_img = deepcopy(colored_depth[:, :, :3])
-        if len(points) > 0:
-            for idx, point in enumerate(points):
-                if idx % 2 == 0:
-                    cv2.circle(depth_img, tuple(point), 10, (255, 0, 0), -1)
-                else:
-                    cv2.circle(depth_img, tuple(point), 10, (0, 0, 255), -1)
-                if idx > 0:
-                    cv2.arrowedLine(depth_img, points[idx-1], points[idx], (255, 255, 255), 4, tipLength=0.5)
-        
-        return depth, depth_img, colored_depth[:, :, :3]
-    
-    return get_depth
 
 
 def interpolate_points(points, num_points):
