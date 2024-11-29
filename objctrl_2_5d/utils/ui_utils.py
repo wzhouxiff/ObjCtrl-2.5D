@@ -52,49 +52,6 @@ def process_image(raw_image):
 def get_subject_points(canvas):
     return canvas["image"], canvas["points"]
 
-@spaces.GPU(duration=50)
-def run_segment(segmentor):
-    def segment(canvas, image, logits):
-        if logits is not None:
-            logits *=  32.0
-        _, points = get_subject_points(canvas)
-        image = np.array(image)
-
-        with torch.inference_mode(), torch.autocast("cuda", dtype=torch.bfloat16):
-            segmentor.set_image(image)
-            input_points = []
-            input_boxes = []
-            for p in points:
-                [x1, y1, _, x2, y2, _] = p
-                if x2==0 and y2==0:
-                    input_points.append([x1, y1])
-                else:
-                    input_boxes.append([x1, y1, x2, y2])
-            if len(input_points) == 0:
-                input_points = None
-                input_labels = None
-            else:
-                input_points = np.array(input_points)
-                input_labels = np.ones(len(input_points))
-            if len(input_boxes) == 0:
-                input_boxes = None
-            else:
-                input_boxes = np.array(input_boxes)
-            masks, _, logits = segmentor.predict(
-                point_coords=input_points,
-                point_labels=input_labels,
-                box=input_boxes,
-                multimask_output=False,
-                return_logits=True,
-                mask_input=logits,
-            )
-            mask = masks > 0
-            masked_img = mask_image(image, mask[0], color=[252, 140, 90], alpha=0.9)
-            masked_img = Image.fromarray(masked_img)
-            
-        return mask[0], masked_img, masked_img, logits / 32.0
-
-    return segment
 
 def mask_image(image,
                mask,
