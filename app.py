@@ -126,7 +126,7 @@ pipeline = get_pipeline(model_id, "unet", model_config['down_block_types'], mode
 # pipeline = None
 
 ### run the demo ##
-@spaces.GPU(duration=50)
+@spaces.GPU(duration=5)
 def segment(canvas, image, logits):
     if logits is not None:
         logits *=  32.0
@@ -167,7 +167,7 @@ def segment(canvas, image, logits):
         
     return mask[0], masked_img, masked_img, logits / 32.0
 
-@spaces.GPU(duration=50)
+@spaces.GPU(duration=5)
 def get_depth(image, points):
     
     depth = d_model_NK.infer_pil(image)    
@@ -186,7 +186,7 @@ def get_depth(image, points):
     return depth, depth_img, colored_depth[:, :, :3]
 
 
-@spaces.GPU(duration=50)
+@spaces.GPU(duration=80)
 def run_objctrl_2_5d(condition_image, 
                         mask, 
                         depth, 
