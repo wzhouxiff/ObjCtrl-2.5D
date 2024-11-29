@@ -680,7 +680,7 @@ with gr.Blocks() as demo:
     get_camera_pose_button.click(
         get_camera_pose(CAMERA_MODE),
         [camera_option, selected_points, depth, mask, rescale, angle, Tx, Ty, Tz, speed],
-        [camera_pose, camera_pose_vis]
+        [camera_pose, camera_pose_vis, rescale]
     )
     
     generated_button.click(

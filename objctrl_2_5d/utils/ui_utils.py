@@ -119,7 +119,11 @@ def traj2cam(traj, depth, rescale):
     center_h_margin, center_w_margin = center_margin, center_margin
     depth_center = np.mean(depth[height//2-center_h_margin:height//2+center_h_margin, width//2-center_w_margin:width//2+center_w_margin])
     
+    if rescale == 0:
+        rescale = 1
+        
     depth_rescale = round(depth_scale_ * rescale / depth_center, 2)
+        
     r_depth = depth * depth_rescale
     
     zc = []
@@ -144,7 +148,7 @@ def traj2cam(traj, depth, rescale):
     RTs = traj_w2c[:, :3]
     fig = vis_camera_rescale(RTs)
     
-    return RTs, fig
+    return RTs, fig, rescale
 
 def get_rotate_cam(angle, depth):
     # mean_depth = np.mean(depth * mask)
@@ -188,12 +192,17 @@ def get_translate_cam(Tx, Ty, Tz, depth, mask, speed):
 def get_camera_pose(camera_mode):
     def trigger_camera_pose(camera_option, selected_points, depth, mask, rescale, angle, Tx, Ty, Tz, speed):
         if camera_option == camera_mode[0]: # traj2cam
-            return traj2cam(selected_points, depth, rescale)
+            RTs, fig, rescale = traj2cam(selected_points, depth, rescale)
         elif camera_option == camera_mode[1]: # rotate
-            return get_rotate_cam(angle, depth)
+            RTs, fig = get_rotate_cam(angle, depth)
+            rescale = 0.0
         elif camera_option == camera_mode[2]: # clockwise
-            return get_clockwise_cam(angle, depth, mask)
+            RTs, fig = get_clockwise_cam(angle, depth, mask)
+            rescale = 0.0
         elif camera_option == camera_mode[3]: # translate
-            return get_translate_cam(Tx, Ty, Tz, depth, mask, speed)
+            RTs, fig = get_translate_cam(Tx, Ty, Tz, depth, mask, speed)
+            rescale = 0.0
+            
+        return RTs, fig, rescale
         
     return trigger_camera_pose
