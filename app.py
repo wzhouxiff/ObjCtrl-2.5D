@@ -159,7 +159,7 @@ pipeline = get_pipeline(model_id, "unet", model_config['down_block_types'], mode
 # pipeline = None
 
 ### run the demo ##
-@spaces.GPU(duration=5)
+@spaces.GPU(duration=7)
 def segment(canvas, image, logits):
     if logits is not None:
         logits *=  32.0
@@ -487,7 +487,7 @@ def run_objctrl_2_5d(condition_image,
 
 
 # UI function
-@spaces.GPU(duration=5)
+@spaces.GPU(duration=7)
 def process_image(raw_image, trajectory_points):
     
     image, points = raw_image['image'], raw_image['points']
@@ -543,7 +543,7 @@ def draw_points_on_image(img, points):
     
     return img
 
-@spaces.GPU(duration=10)
+@spaces.GPU(duration=15)
 def from_examples(raw_input, raw_image_points, canvas, seg_image_points, selected_points_text, camera_option, mask_bk):
     
     selected_points = ast.literal_eval(selected_points_text)
@@ -705,7 +705,7 @@ with gr.Blocks() as demo:
                 
                 generated_button = gr.Button("Generate")
 
-                get_mid_params_button = gr.Button("Get Mid Params")
+                get_mid_params_button = gr.Button("Get Mid Params", visible=False)
                 
 
     # # event definition
