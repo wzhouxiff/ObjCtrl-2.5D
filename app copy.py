@@ -5,14 +5,12 @@ except:
 
 import os
 import gradio as gr
-import json
-import ast
 
 import torch
 from gradio_image_prompter import ImagePrompter
 from sam2.sam2_image_predictor import SAM2ImagePredictor
 from omegaconf import OmegaConf
-from PIL import Image, ImageDraw
+from PIL import Image
 import numpy as np
 from copy import deepcopy
 import cv2
@@ -22,7 +20,7 @@ import torchvision
 from einops import rearrange
 import tempfile
 
-from objctrl_2_5d.utils.ui_utils import process_image, get_camera_pose, get_subject_points, get_points, undo_points, mask_image, traj2cam, get_mid_params
+from objctrl_2_5d.utils.ui_utils import process_image, get_camera_pose, get_subject_points, get_points, undo_points, mask_image
 from ZoeDepth.zoedepth.utils.misc import colorize
 
 from cameractrl.inference import get_pipeline
@@ -30,6 +28,7 @@ from objctrl_2_5d.utils.examples import examples, sync_points
 
 from objctrl_2_5d.utils.objmask_util import RT2Plucker, Unprojected, roll_with_ignore_multidim, dilate_mask_pytorch
 from objctrl_2_5d.utils.filter_utils import get_freq_filter, freq_mix_3d
+
 
 ### Title and Description ###
 #### Description ####
@@ -90,40 +89,9 @@ If you have any questions, please feel free to reach me out at <b>zhouzi1212@gma
 
 """
 
-# pre-defined parameters
-DEBUG = False
-
-if DEBUG:
-    cur_OUTPUT_PATH = 'outputs/tmp'
-    os.makedirs(cur_OUTPUT_PATH, exist_ok=True)
-
-# num_inference_steps=25
-min_guidance_scale = 1.0
-max_guidance_scale = 3.0
-
-area_ratio = 0.3
-depth_scale_ = 5.2
-center_margin = 10
-
-height, width = 320, 576
-num_frames = 14
-
-intrinsics = np.array([[float(width), float(width), float(width) / 2, float(height) / 2]])
-intrinsics = np.repeat(intrinsics, num_frames, axis=0) # [n_frame, 4]
-fx = intrinsics[0, 0] / width
-fy = intrinsics[0, 1] / height
-cx = intrinsics[0, 2] / width
-cy = intrinsics[0, 3] / height
-
-down_scale = 8
-H, W = height // down_scale, width // down_scale
-K = np.array([[width / down_scale, 0, W / 2], [0, width / down_scale, H / 2], [0, 0, 1]])
-
-
 # -------------- initialization --------------
 
-# CAMERA_MODE = ["Traj2Cam", "Rotate", "Clockwise", "Translate"]
-CAMERA_MODE = ["None", "ZoomIn", "ZoomOut", "PanRight", "PanLeft", "TiltUp", "TiltDown", "ClockWise", "Anti-CW", "Rotate60"]
+CAMERA_MODE = ["Traj2Cam", "Rotate", "Clockwise", "Translate"]
 
 # select the device for computation
 if torch.cuda.is_available():
@@ -134,7 +102,7 @@ else:
     device = torch.device("cpu")
 print(f"using device: {device}")
 
-# # segmentation model
+# segmentation model
 segmentor = SAM2ImagePredictor.from_pretrained("facebook/sam2-hiera-tiny", cache_dir="ckpt", device=device)
 
 # depth model
@@ -199,7 +167,26 @@ def segment(canvas, image, logits):
         masked_img = mask_image(image, mask[0], color=[252, 140, 90], alpha=0.9)
         masked_img = Image.fromarray(masked_img)
         
-    return mask[0], {'image': masked_img, 'points': points}, logits / 32.0
+    return mask[0], masked_img, masked_img, logits / 32.0
+
+# @spaces.GPU(duration=5)
+def get_depth(image, points):
+    
+    depth = d_model_NK.infer_pil(image)    
+    colored_depth = colorize(depth, cmap='gray_r') # [h, w, 4] 0-255
+    
+    depth_img = deepcopy(colored_depth[:, :, :3])
+    if len(points) > 0:
+        for idx, point in enumerate(points):
+            if idx % 2 == 0:
+                cv2.circle(depth_img, tuple(point), 10, (255, 0, 0), -1)
+            else:
+                cv2.circle(depth_img, tuple(point), 10, (0, 0, 255), -1)
+            if idx > 0:
+                cv2.arrowedLine(depth_img, points[idx-1], points[idx], (255, 255, 255), 4, tipLength=0.5)
+    
+    return depth, depth_img, colored_depth[:, :, :3]
+
 
 # @spaces.GPU(duration=80)
 def run_objctrl_2_5d(condition_image, 
@@ -213,6 +200,35 @@ def run_objctrl_2_5d(condition_image,
                         seed, 
                         ds, dt, 
                         num_inference_steps=25):
+    
+    DEBUG = False
+
+    if DEBUG:
+        cur_OUTPUT_PATH = 'outputs/tmp'
+        os.makedirs(cur_OUTPUT_PATH, exist_ok=True)
+
+    # num_inference_steps=25
+    min_guidance_scale = 1.0
+    max_guidance_scale = 3.0
+
+    area_ratio = 0.3
+    depth_scale_ = 5.2
+    center_margin = 10
+
+    height, width = 320, 576
+    num_frames = 14
+
+    intrinsics = np.array([[float(width), float(width), float(width) / 2, float(height) / 2]])
+    intrinsics = np.repeat(intrinsics, num_frames, axis=0) # [n_frame, 4]
+    fx = intrinsics[0, 0] / width
+    fy = intrinsics[0, 1] / height
+    cx = intrinsics[0, 2] / width
+    cy = intrinsics[0, 3] / height
+
+    down_scale = 8
+    H, W = height // down_scale, width // down_scale
+    K = np.array([[width / down_scale, 0, W / 2], [0, width / down_scale, H / 2], [0, 0, 1]])
+    
     seed = int(seed)
             
     center_h_margin, center_w_margin = center_margin, center_margin
@@ -274,7 +290,7 @@ def run_objctrl_2_5d(condition_image,
         fix_pose_features = None
         
     #### preparing mask
-
+    
     mask = Image.fromarray(mask)
     mask = mask.resize((W, H))
     mask = np.array(mask).astype(np.float32)
@@ -486,97 +502,6 @@ def run_objctrl_2_5d(condition_image,
     
     return video_path
 
-
-# UI function
-# @spaces.GPU(duration=5)
-def process_image(raw_image, trajectory_points):
-    
-    image, points = raw_image['image'], raw_image['points']
-    
-    print(points)
-    
-    try:
-        assert(len(points)) == 1, "Please draw only one bbox"
-        [x1, y1, _, x2, y2, _] = points[0]
-        
-        image = image.crop((x1, y1, x2, y2))
-        image = image.resize((width, height))
-    except:
-        image = image.resize((width, height))
-
-    depth = d_model_NK.infer_pil(image)    
-    colored_depth = colorize(depth, cmap='gray_r') # [h, w, 4] 0-255
-    
-    depth_img = deepcopy(colored_depth[:, :, :3])
-    if len(trajectory_points) > 0:
-        for idx, point in enumerate(trajectory_points):
-            if idx % 2 == 0:
-                cv2.circle(depth_img, tuple(point), 10, (255, 0, 0), -1)
-            else:
-                cv2.circle(depth_img, tuple(point), 10, (0, 0, 255), -1)
-            if idx > 0:
-                line_length = np.sqrt((trajectory_points[idx][0] - trajectory_points[idx-1][0])**2 + (trajectory_points[idx][1] - trajectory_points[idx-1][1])**2)
-                arrow_head_length = 10
-                tip_length = arrow_head_length / line_length
-                cv2.arrowedLine(depth_img, trajectory_points[idx-1], trajectory_points[idx], (0, 255, 0), 4, tipLength=tip_length)
-    
-    return image, {'image': image}, depth, depth_img, colored_depth[:, :, :3]
-
-
-
-def draw_points_on_image(img, points):
-    # img = Image.fromarray(np.array(image))
-    draw = ImageDraw.Draw(img)
-    
-    for p in points:
-        x1, y1, _, x2, y2, _ = p
-        
-        if x2 == 0 and y2 == 0:
-            # Point: 青色点带黑边
-            point_radius = 4
-            draw.ellipse(
-                (x1 - point_radius, y1 - point_radius, x1 + point_radius, y1 + point_radius),
-                fill="cyan", outline="black", width=1
-            )
-        else:
-            # Bounding Box: 黑色矩形框
-            draw.rectangle([x1, y1, x2, y2], outline="black", width=3)
-    
-    return img
-
-# @spaces.GPU(duration=10)
-def from_examples(raw_input, raw_image_points, canvas, seg_image_points, selected_points_text, camera_option, mask_bk):
-    
-    selected_points = ast.literal_eval(selected_points_text)
-    mask = np.array(mask_bk)
-    mask = mask[:,:,0] > 0
-    selected_points = ast.literal_eval(selected_points_text)
-    
-    image, _, depth, depth_img, colored_depth = process_image(raw_input, selected_points)
-    
-    # get camera pose
-    if camera_option == "None":
-        # traj2came
-        rescale = 1.0
-        camera_pose, camera_pose_vis, rescale, _ = traj2cam(selected_points,  depth , rescale)
-    else:
-        rescale = 0.0
-        angle = 60
-        speed = 4.0
-        camera_pose, camera_pose_vis, rescale = get_camera_pose(CAMERA_MODE)(camera_option, depth, mask, rescale, angle, speed)
-        
-    raw_image_points = ast.literal_eval(raw_image_points)
-    seg_image_points = ast.literal_eval(seg_image_points)
-    
-    raw_image = draw_points_on_image(raw_input['image'], raw_image_points)
-    seg_image = draw_points_on_image(canvas['image'], seg_image_points)
-        
-    return image, mask, depth, depth_img, colored_depth, camera_pose, \
-            camera_pose_vis, rescale, selected_points, \
-            gr.update(value={'image': raw_image, 'points': raw_image_points}), \
-            gr.update(value={'image': seg_image, 'points': seg_image_points}), \
-
-
 # -------------- UI definition --------------
 with gr.Blocks() as demo:
     # layout definition
@@ -590,16 +515,12 @@ with gr.Blocks() as demo:
     # with gr.Row():
     #     gr.Markdown("""# <center>Repositioning the Subject within Image </center>""")
     mask = gr.State(value=None) # store mask
-    mask_bk = gr.Image(type="pil", label="Mask", show_label=True, interactive=False, visible=False)
-    
     removal_mask = gr.State(value=None) # store removal mask
     selected_points = gr.State([]) # store points
     selected_points_text = gr.Textbox(label="Selected Points", visible=False)
-    raw_image_points = gr.Textbox(label="Raw Image Points", visible=False)
-    seg_image_points = gr.Textbox(label="Segment Image Points", visible=False)
     
     original_image = gr.State(value=None) # store original input image
-    # masked_original_image = gr.State(value=None) # store masked input image
+    masked_original_image = gr.State(value=None) # store masked input image
     mask_logits = gr.State(value=None) # store mask logits
     
     depth = gr.State(value=None) # store depth
@@ -607,22 +528,14 @@ with gr.Blocks() as demo:
     
     camera_pose = gr.State(value=None) # store camera pose
     
-    rescale = gr.Slider(minimum=0.0, maximum=10, step=0.1, value=1.0, label="Rescale", interactive=True, visible=False)
-    angle = gr.Slider(minimum=-360, maximum=360, step=1, value=60, label="Angle", interactive=True, visible=False)
-    
-    seed = gr.Textbox(value = "42", label="Seed", interactive=True, visible=False)
-    scale_wise_masks = gr.Checkbox(label="Enable Scale-wise Masks", interactive=True, value=True, visible=False)
-    ds = gr.Slider(minimum=0.0, maximum=1, step=0.1, value=0.25, label="ds", interactive=True, visible=False)
-    dt = gr.Slider(minimum=0.0, maximum=1, step=0.1, value=0.1, label="dt", interactive=True, visible=False)
-    
     with gr.Column():
         
         outlines = """
         <font size="5"><b>There are total 5 steps to complete the task.</b></font>
-        - Step 1: Input an image and Crop it to a suitable size and attained depth;
+        - Step 1: Input an image and Crop it to a suitable size;
         - Step 2: Attain the subject mask;
-        - Step 3: Draw trajectory on depth map or skip to use camera pose;
-        - Step 4: Select camera poses or skip.
+        - Step 3: Get depth and Draw Trajectory;
+        - Step 4: Get camera pose from trajectory or customize it;
         - Step 5: Generate the final video.
         """
         
@@ -634,92 +547,125 @@ with gr.Blocks() as demo:
                 # Step 1: Input Image
                 step1_dec = """
                     <font size="4"><b>Step 1: Input Image</b></font>
+                    - Select the region using a <mark>bounding box</mark>, aiming for a ratio close to </mark>320:576</mark> (height:width).
+                    - All provided images in `Examples` are in 320 x 576 resolution. Simply press `Process` to proceed.
                     """
                 step1 = gr.Markdown(step1_dec)
                 raw_input = ImagePrompter(type="pil", label="Raw Image", show_label=True, interactive=True)
-                
-                step1_notes = """
-                - Select the region using a <mark>bounding box</mark>, aiming for a ratio close to </mark>320:576</mark> (height:width).
-                - If the input is in 320 x 576, press `Process` directly.
-                """
-                notes = gr.Markdown(step1_notes)
-                
+                # left_up_point = gr.Textbox(value = "-1 -1", label="Left Up Point", interactive=True)
                 process_button = gr.Button("Process")
                 
             with gr.Column():
                 # Step 2: Get Subject Mask
                 step2_dec = """
                     <font size="4"><b>Step 2: Get Subject Mask</b></font>
+                    - Use the <mark>bounding boxes</mark> or <mark>paints</mark> to select the subject.
+                    - Press `Segment Subject` to get the mask. <mark>Can be refined iteratively by updating points<mark>.
                     """
                 step2 = gr.Markdown(step2_dec)
                 canvas = ImagePrompter(type="pil", label="Input Image", show_label=True, interactive=True) # for mask painting
 
-                step2_notes = """
-                    - Use the <mark>bounding boxes</mark> or <mark>points</mark> to select the subject.
-                    - Press `Segment Subject` to get the mask. <mark>Can be refined iteratively by updating points<mark>.
-                """
-                notes = gr.Markdown(step2_notes)
-
                 select_button = gr.Button("Segment Subject")
                 
+        with gr.Row():
+            with gr.Column():
+                mask_dec = """
+                    <font size="4"><b>Mask Result</b></font>
+                    - Just for visualization purpose. No need to interact.
+                """
+                mask_vis = gr.Markdown(mask_dec)
+                mask_output = gr.Image(type="pil", label="Mask", show_label=True, interactive=False)
             with gr.Column():
                 # Step 3: Get Depth and Draw Trajectory
                 step3_dec = """
-                    <font size="4"><b>Step 3: Draw Trajectory on Depth or <mark>SKIP</mark></b></font>
-                    
+                    <font size="4"><b>Step 3: Get Depth and Draw Trajectory</b></font>
+                    - Press `Get Depth` to get the depth image.
+                    - Draw the trajectory by selecting points on the depth image. <mark>No more than 14 points</mark>.
+                    - Press `Undo point` to remove all points.
                 """
                 step3 = gr.Markdown(step3_dec)
                 depth_image = gr.Image(type="pil", label="Depth Image", show_label=True, interactive=False)
-                
-                step3_dec = """
-                    - Selecting points on the depth image. <mark>No more than 14 points</mark>.
-                    - Press `Undo point` to remove all points. Press `Traj2Cam` to get camera poses.
-                    """
-                notes = gr.Markdown(step3_dec)
-                
-                undo_button = gr.Button("Undo point")
-                traj2cam_button = gr.Button("Traj2Cam")
-                
+                with gr.Row():
+                    depth_button = gr.Button("Get Depth")
+                    undo_button = gr.Button("Undo point")
+                    
         with gr.Row():
-            
             with gr.Column():
                 # Step 4: Trajectory to Camera Pose or Get Camera Pose
                 step4_dec = """
-                    <font size="4"><b>Step 4: Get Customized Camera Poses or <mark>Skip</mark></b></font>
+                    <font size="4"><b>Step 4: Get camera pose from trajectory or customize it</b></font>
+                    - Option 1: Transform the 2D trajectory to camera poses with depth. <mark>`Rescale` is used for depth alignment. Larger value can speed up the object motion.</mark>
+                    - Option 2: Rotate the camera with a specific `Angle`.
+                    - Option 3: Rotate the camera clockwise or counterclockwise with a specific `Angle`.
+                    - Option 4: Translate the camera with `Tx` (<mark>Pan Left/Right</mark>), `Ty` (<mark>Pan Up/Down</mark>), `Tz` (<mark>Zoom In/Out</mark>) and `Speed`.
                 """
                 step4 = gr.Markdown(step4_dec)
                 camera_pose_vis = gr.Plot(None, label='Camera Pose')
-                camera_option = gr.Radio(choices = CAMERA_MODE, label='Camera Options', value=CAMERA_MODE[0], interactive=True)
-                speed = gr.Slider(minimum=0.1, maximum=10, step=0.1, value=4.0, label="Speed", interactive=True, visible=True)
+                with gr.Row():
+                    with gr.Column():
+                        speed = gr.Slider(minimum=0.1, maximum=10, step=0.1, value=1.0, label="Speed", interactive=True)
+                        rescale = gr.Slider(minimum=0.0, maximum=10, step=0.1, value=1.0, label="Rescale", interactive=True)
+                        # traj2pose_button = gr.Button("Option1: Trajectory to Camera Pose")
+                        
+                        angle = gr.Slider(minimum=-360, maximum=360, step=1, value=60, label="Angle", interactive=True)
+                        # rotation_button = gr.Button("Option2: Rotate")
+                        # clockwise_button = gr.Button("Option3: Clockwise")
+                    with gr.Column():
+                        
+                        Tx = gr.Slider(minimum=-1, maximum=1, step=1, value=0, label="Tx", interactive=True)
+                        Ty = gr.Slider(minimum=-1, maximum=1, step=1, value=0, label="Ty", interactive=True)
+                        Tz = gr.Slider(minimum=-1, maximum=1, step=1, value=0, label="Tz", interactive=True)
+                        # translation_button = gr.Button("Option4: Translate")
+                with gr.Row():
+                    camera_option = gr.Radio(choices = CAMERA_MODE, label='Camera Options', value=CAMERA_MODE[0], interactive=True)
+                with gr.Row():
+                    get_camera_pose_button = gr.Button("Get Camera Pose")
                         
             with gr.Column():
                 # Step 5: Get the final generated video
                 step5_dec = """
                     <font size="4"><b>Step 5: Get the final generated video</b></font>
+                    - 3 modes for background: <mark>Fixed</mark>, <mark>Reverse</mark>, <mark>Free</mark>.
+                    - Enable <mark>Scale-wise Masks</mark> for better object control.
+                    - Option to enable <mark>Shared Warping Latents</mark> and set <mark>stop frequency</mark> for spatial (`ds`) and temporal (`dt`) dimensions. Larger stop frequency will lead to artifacts.
                 """
                 step5 = gr.Markdown(step5_dec)
                 generated_video = gr.Video(None, label='Generated Video')
                 
-                # with gr.Row():
-                bg_mode = gr.Radio(choices = ["Fixed", "Reverse", "Free"], label="Background Mode", value="Fixed", interactive=True)
-                shared_wapring_latents = gr.Checkbox(label="Enable Shared Warping Latents", interactive=True, value=False, visible=True)
+                with gr.Row():
+                    seed = gr.Textbox(value = "42", label="Seed", interactive=True)
+                    # num_inference_steps = gr.Slider(minimum=1, maximum=100, step=1, value=25, label="Number of Inference Steps", interactive=True)
+                    bg_mode = gr.Radio(choices = ["Fixed", "Reverse", "Free"], label="Background Mode", value="Fixed", interactive=True)
+                # swl_mode = gr.Radio(choices = ["Enable SWL", "Disable SWL"], label="Shared Warping Latent", value="Disable SWL", interactive=True)
+                scale_wise_masks = gr.Checkbox(label="Enable Scale-wise Masks", interactive=True, value=True)
+                with gr.Row():
+                    with gr.Column():
+                        shared_wapring_latents = gr.Checkbox(label="Enable Shared Warping Latents", interactive=True)
+                    with gr.Column():
+                        ds = gr.Slider(minimum=0.0, maximum=1, step=0.1, value=0.5, label="ds", interactive=True)
+                        dt = gr.Slider(minimum=0.0, maximum=1, step=0.1, value=0.5, label="dt", interactive=True)
                 
                 generated_button = gr.Button("Generate")
 
-                get_mid_params_button = gr.Button("Get Mid Params")
                 
 
     # # event definition
     process_button.click(
         fn = process_image,
-        inputs = [raw_input, selected_points],
-        outputs = [original_image, canvas, depth, depth_image, org_depth_image]
+        inputs = [raw_input],
+        outputs = [original_image, canvas]
     )
     
     select_button.click(
         segment,
         [canvas, original_image, mask_logits],
-        [mask, canvas, mask_logits]
+        [mask, mask_output, masked_original_image, mask_logits]
+    )
+    
+    depth_button.click(
+        get_depth,
+        [original_image, selected_points],
+        [depth, depth_image, org_depth_image]
     )
     
     depth_image.select(
@@ -733,15 +679,9 @@ with gr.Blocks() as demo:
         [depth_image, selected_points]
     )
     
-    traj2cam_button.click(
-        traj2cam,
-        [selected_points, depth, rescale],
-        [camera_pose, camera_pose_vis, rescale, camera_option]
-    )
-    
-    camera_option.change(
+    get_camera_pose_button.click(
         get_camera_pose(CAMERA_MODE),
-        [camera_option, depth, mask, rescale, angle, speed],
+        [camera_option, selected_points, depth, mask, rescale, angle, Tx, Ty, Tz, speed],
         [camera_pose, camera_pose_vis, rescale]
     )
     
@@ -763,44 +703,35 @@ with gr.Blocks() as demo:
          ],
         [generated_video],
     )
-    
-    get_mid_params_button.click(
-        get_mid_params,
-        [raw_input, canvas, mask, selected_points, camera_option, bg_mode, shared_wapring_latents, generated_video]
-    )
-    
-    ## Get examples
-    with open('./assets/examples/examples.json', 'r') as f:
-        examples = json.load(f)
-        print(examples)
-    
-    # examples = [examples]
-    examples = [v for k, v in examples.items()]
 
     gr.Examples(
         examples=examples,
         inputs=[
             raw_input,
-            raw_image_points,
-            canvas,
-            seg_image_points,
-            mask_bk,
-            selected_points_text,  # selected_points
+            rescale,
+            speed,
+            angle,
+            Tx,
+            Ty,
+            Tz,
             camera_option,
             bg_mode,
             shared_wapring_latents,
-            generated_video
+            scale_wise_masks,
+            ds,
+            dt,
+            seed,
+            selected_points_text  # selected_points
         ],
-        examples_per_page=20
+        outputs=[generated_video], 
+        examples_per_page=10
     )
     
     selected_points_text.change(
-        from_examples,
-        inputs=[raw_input, raw_image_points, canvas, seg_image_points, selected_points_text, camera_option, mask_bk],
-        outputs=[original_image, mask, depth, depth_image, org_depth_image, camera_pose, camera_pose_vis, rescale, selected_points, raw_input, canvas]
+        sync_points,
+        inputs=[selected_points_text],
+        outputs=[selected_points]
     )
-    
-            
 
 
     gr.Markdown(article)
