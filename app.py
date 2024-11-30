@@ -545,13 +545,15 @@ def draw_points_on_image(img, points):
 
 @spaces.GPU(duration=15)
 def from_examples(raw_input, raw_image_points, canvas, seg_image_points, selected_points_text, camera_option, mask_bk):
+    raw_image_points = ast.literal_eval(raw_image_points)
+    seg_image_points = ast.literal_eval(seg_image_points)
     
     selected_points = ast.literal_eval(selected_points_text)
     mask = np.array(mask_bk)
     mask = mask[:,:,0] > 0
     selected_points = ast.literal_eval(selected_points_text)
     
-    image, _, depth, depth_img, colored_depth = process_image(raw_input, selected_points)
+    image, _, depth, depth_img, colored_depth = process_image({'image': raw_input['image'], 'points': raw_image_points}, selected_points)
     
     # get camera pose
     if camera_option == "None":
@@ -564,8 +566,6 @@ def from_examples(raw_input, raw_image_points, canvas, seg_image_points, selecte
         speed = 4.0
         camera_pose, camera_pose_vis, rescale = get_camera_pose(CAMERA_MODE)(camera_option, depth, mask, rescale, angle, speed)
         
-    raw_image_points = ast.literal_eval(raw_image_points)
-    seg_image_points = ast.literal_eval(seg_image_points)
     
     raw_image = draw_points_on_image(raw_input['image'], raw_image_points)
     seg_image = draw_points_on_image(canvas['image'], seg_image_points)
