@@ -771,7 +771,7 @@ with gr.Blocks() as demo:
     ## Get examples
     with open('./assets/examples/examples.json', 'r') as f:
         examples = json.load(f)
-        print(examples)
+        # print(examples)
     
     # examples = [examples]
     examples = [v for k, v in examples.items()]
