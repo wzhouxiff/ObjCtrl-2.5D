@@ -26,7 +26,6 @@ from objctrl_2_5d.utils.ui_utils import process_image, get_camera_pose, get_subj
 from ZoeDepth.zoedepth.utils.misc import colorize
 
 from cameractrl.inference import get_pipeline
-from objctrl_2_5d.utils.examples import examples, sync_points
 
 from objctrl_2_5d.utils.objmask_util import RT2Plucker, Unprojected, roll_with_ignore_multidim, dilate_mask_pytorch
 from objctrl_2_5d.utils.filter_utils import get_freq_filter, freq_mix_3d
