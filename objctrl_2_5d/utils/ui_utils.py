@@ -9,6 +9,7 @@ from objctrl_2_5d.utils.vis_camera import vis_camera_rescale
 from objctrl_2_5d.utils.objmask_util import trajectory_to_camera_poses_v1
 from objctrl_2_5d.utils.customized_cam import rotation, clockwise, pan_and_zoom
 
+CAMERA_MODE = ["None", "ZoomIn", "ZoomOut", "PanRight", "PanLeft", "TiltUp", "TiltDown", "ClockWise", "Anti-CW", "Rotate60"]
 
 zc_threshold = 0.2
 depth_scale_ = 5.2
@@ -28,8 +29,6 @@ def process_image(raw_image):
     
     
     image, points = raw_image['image'], raw_image['points']
-    
-    print(points)
     
     try:
         assert(len(points)) == 1, "Please select only one point"
@@ -88,7 +87,10 @@ def get_points(img,
         # draw an arrow from handle point to target point
         # if len(points) == idx + 1:
         if idx > 0:
-            cv2.arrowedLine(img, points[idx-1], points[idx], (255, 255, 255), 4, tipLength=0.5)
+            line_length = np.sqrt((points[idx][0] - points[idx-1][0])**2 + (points[idx][1] - points[idx-1][1])**2)
+            arrow_head_length = 10
+            tip_length = arrow_head_length / line_length
+            cv2.arrowedLine(img, points[idx-1], points[idx], (0, 255, 0), 4, tipLength=tip_length)
             # points = []
             
     return img if isinstance(img, np.ndarray) else np.array(img), sel_pix
@@ -112,6 +114,9 @@ def interpolate_points(points, num_points):
     return np.vstack((x_new, y_new)).T # []
 
 def traj2cam(traj, depth, rescale):
+    
+    if len(traj) == 0:
+        return None, None, 0.0, gr.update(value=CAMERA_MODE[0])
     
     traj = np.array(traj)
     trajectory = interpolate_points(traj, num_frames)
@@ -148,13 +153,13 @@ def traj2cam(traj, depth, rescale):
     RTs = traj_w2c[:, :3]
     fig = vis_camera_rescale(RTs)
     
-    return RTs, fig, rescale
+    return RTs, fig, rescale, gr.update(value=CAMERA_MODE[0])
 
 def get_rotate_cam(angle, depth):
     # mean_depth = np.mean(depth * mask)
     center_h_margin, center_w_margin = center_margin, center_margin
     depth_center = np.mean(depth[height//2-center_h_margin:height//2+center_h_margin, width//2-center_w_margin:width//2+center_w_margin])
-    print(f'rotate depth_center: {depth_center}')
+    # print(f'rotate depth_center: {depth_center}')
     
     RTs = rotation(num_frames, angle, depth_center, depth_center)
     fig = vis_camera_rescale(RTs)
@@ -162,47 +167,128 @@ def get_rotate_cam(angle, depth):
     return RTs, fig
 
 def get_clockwise_cam(angle, depth, mask):
-    mask = mask.astype(np.float32) # [0, 1]
-    mean_depth = np.mean(depth * mask)
+    # mask = mask.astype(np.float32) # [0, 1]
+    # mean_depth = np.mean(depth * mask)
     # center_h_margin, center_w_margin = center_margin, center_margin
     # depth_center = np.mean(depth[height//2-center_h_margin:height//2+center_h_margin, width//2-center_w_margin:width//2+center_w_margin])
     
     RTs = clockwise(angle, num_frames)
     
-    RTs[:, -1, -1] = mean_depth
+    # RTs[:, -1, -1] = mean_depth
     fig = vis_camera_rescale(RTs)
     
     return RTs, fig
 
 def get_translate_cam(Tx, Ty, Tz, depth, mask, speed):
-    mask = mask.astype(np.float32) # [0, 1]
+    # mask = mask.astype(np.float32) # [0, 1]
     
-    mean_depth = np.mean(depth * mask)
+    # mean_depth = np.mean(depth * mask)
     
     T = np.array([Tx, Ty, Tz])
     T = T.reshape(3, 1)
     T = T[None, ...].repeat(num_frames, axis=0)
     
     RTs = pan_and_zoom(T, speed, n=num_frames)
-    RTs[:, -1, -1] += mean_depth
+    # RTs[:, -1, -1] += mean_depth
     fig = vis_camera_rescale(RTs)
     
     return RTs, fig
 
+
 def get_camera_pose(camera_mode):
-    def trigger_camera_pose(camera_option, selected_points, depth, mask, rescale, angle, Tx, Ty, Tz, speed):
-        if camera_option == camera_mode[0]: # traj2cam
-            RTs, fig, rescale = traj2cam(selected_points, depth, rescale)
-        elif camera_option == camera_mode[1]: # rotate
-            RTs, fig = get_rotate_cam(angle, depth)
-            rescale = 0.0
-        elif camera_option == camera_mode[2]: # clockwise
+    # camera_mode = ["None", "ZoomIn", "ZoomOut", "PanLeft", "PanRight", "TiltUp", "TiltDown", "ClockWise", "Anti-CW", "Rotate60"]
+    def trigger_camera_pose(camera_option,  depth, mask, rescale, angle, speed):
+        if camera_option == camera_mode[0]: # None
+            RTs = None
+            fig = None
+        elif camera_option == camera_mode[1]: # ZoomIn
+            RTs, fig = get_translate_cam(0, 0, -1, depth, mask, speed)
+
+        elif camera_option == camera_mode[2]: # ZoomOut
+            RTs, fig = get_translate_cam(0, 0, 1, depth, mask, speed)
+
+        elif camera_option == camera_mode[3]: # PanLeft
+            RTs, fig = get_translate_cam(-1, 0, 0, depth, mask, speed)
+
+        elif camera_option == camera_mode[4]: # PanRight
+            RTs, fig = get_translate_cam(1, 0, 0, depth, mask, speed)
+
+        elif camera_option == camera_mode[5]: # TiltUp
+            RTs, fig = get_translate_cam(0, 1, 0, depth, mask, speed)
+
+        elif camera_option == camera_mode[6]: # TiltDown
+            RTs, fig = get_translate_cam(0, -1, 0, depth, mask, speed)
+
+        elif camera_option == camera_mode[7]: # ClockWise
+            RTs, fig = get_clockwise_cam(-angle, depth, mask)
+
+        elif camera_option == camera_mode[8]: # Anti-CW
             RTs, fig = get_clockwise_cam(angle, depth, mask)
-            rescale = 0.0
-        elif camera_option == camera_mode[3]: # translate
-            RTs, fig = get_translate_cam(Tx, Ty, Tz, depth, mask, speed)
-            rescale = 0.0
+
+        else: # Rotate60
+            RTs, fig = get_rotate_cam(angle, depth)
             
+        rescale = 0.0
         return RTs, fig, rescale
         
     return trigger_camera_pose
+
+import os
+from glob import glob
+import json
+
+def get_mid_params(raw_input, canvas, mask, selected_points, camera_option, bg_mode, shared_wapring_latents, generated_video):
+    output_dir = "./assets/examples"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    # folders = sorted(glob(output_dir + "/*"))
+    folders = os.listdir(output_dir)
+    folders = [int(folder) for folder in folders if os.path.isdir(os.path.join(output_dir, folder))]
+    num = sorted(folders)[-1] + 1 if folders else 0
+    
+    fout = open(os.path.join(output_dir, f'examples.json'), 'a+')
+    
+    cur_folder = os.path.join(output_dir, f'{num:05d}')
+    os.makedirs(cur_folder, exist_ok=True)
+    
+    raw_image = raw_input['image']
+    raw_points = raw_input['points']
+    seg_image = canvas['image']
+    seg_points = canvas['points']
+    
+    mask = Image.fromarray(mask)
+    mask_path = os.path.join(cur_folder, 'mask.png')
+    mask.save(mask_path)
+    
+    raw_image_path = os.path.join(cur_folder, 'raw_image.png')
+    seg_image_path = os.path.join(cur_folder, 'seg_image.png')
+    
+    raw_image.save(os.path.join(cur_folder, 'raw_image.png'))
+    seg_image.save(os.path.join(cur_folder, 'seg_image.png'))
+    
+    gen_path = os.path.join(cur_folder, 'generated_video.mp4')
+    cmd = f"cp {generated_video} {gen_path}"
+    os.system(cmd)
+    
+    # data = [{'image': raw_image_path, 'points': raw_points}, 
+    #         {'image': seg_image_path, 'points': seg_points}, 
+    #         mask_path,
+    #         str(selected_points), 
+    #         camera_option, 
+    #         bg_mode, 
+    #         gen_path]
+    data = {f'{num:05d}': [{'image': raw_image_path}, 
+            str(raw_points),
+            {'image': seg_image_path},
+            str(seg_points), 
+            mask_path,
+            str(selected_points), 
+            camera_option, 
+            bg_mode, 
+            shared_wapring_latents,
+            gen_path]}
+    fout.write(json.dumps(data) + '\n')
+    
+    fout.close()
+    
+    
