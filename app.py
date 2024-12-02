@@ -46,7 +46,7 @@ authors = r"""
 <div align='center'>
  <a href='https://wzhouxiff.github.io/'>Zhouxia Wang</a>
 &ensp; <a href='https://nirvanalan.github.io/'>Yushi Lan</a>
-&ensp; <a href='https://shangchenzhou.com/'>Shanchen Zhou</a>
+&ensp; <a href='https://shangchenzhou.com/'>Shangchen Zhou</a>
 &ensp; <a href='https://www.mmlab-ntu.com/person/ccloy/index.html'>Chen Change Loy</a>
 </div>
 """
