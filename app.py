@@ -36,9 +36,10 @@ title = r"""<h1 align="center">ObjCtrl-2.5D: Training-free Object Control with C
 # subtitle = r"""<h2 align="center">Deployed on SVD Generation</h2>"""
 important_link = r"""
 <div align='center'>
- <a href='https://wzhouxiff.github.io/projects/MotionCtrl/assets/paper/MotionCtrl.pdf'>[Paper]</a>
-&ensp; <a href='https://wzhouxiff.github.io/projects/MotionCtrl/'>[Project Page]</a>
-&ensp; <a href='https://github.com/TencentARC/MotionCtrl'>[Code]</a>
+ <a href=''>[Paper]</a>
+&ensp; <a href=''>[arxiv]</a>
+&ensp; <a href='https://wzhouxiff.github.io/projects/ObjCtrl-2.5D/'>[Project Page]</a>
+&ensp; <a href='https://github.com/wzhouxiff/ObjCtrl-2.5D'>[Code]</a>
 </div>
 """
 
@@ -58,15 +59,15 @@ affiliation = r"""
 """
 
 description = r"""
-<b>Official Gradio demo</b> for <a href='https://github.com/TencentARC/MotionCtrl' target='_blank'><b>ObjCtrl-2.5D: Training-free Object Control with Camera Poses</b></a>.<br>
+<b>Official Gradio demo</b> for <a href='https://github.com/wzhouxiff/ObjCtrl-2.5D' target='_blank'><b>ObjCtrl-2.5D: Training-free Object Control with Camera Poses</b></a>.<br>
 🔥 ObjCtrl2.5D enables object motion control in a I2V generated video via transforming 2D trajectories to 3D using depth, subsequently converting them into camera poses, 
 thereby leveraging the exisitng camera motion control module for object motion control without requiring additional training.<br>
 """
 
 article = r"""
-If ObjCtrl2.5D is helpful, please help to ⭐ the <a href='https://github.com/TencentARC/MotionCtrl' target='_blank'>Github Repo</a>. Thanks! 
-[![GitHub Stars](https://img.shields.io/github/stars/TencentARC%2FMotionCtrl
-)](https://github.com/TencentARC/MotionCtrl)
+If ObjCtrl2.5D is helpful, please help to ⭐ the <a href='https://github.com/wzhouxiff/ObjCtrl-2.5D' target='_blank'>Github Repo</a>. Thanks! 
+[![GitHub Stars](https://img.shields.io/github/stars/wzhouxiff%2FObjCtrl-2.5D
+)](https://github.com/wzhouxiff/ObjCtrl-2.5D)
 
 ---
 
@@ -74,11 +75,10 @@ If ObjCtrl2.5D is helpful, please help to ⭐ the <a href='https://github.com/Te
 <br>
 If our work is useful for your research, please consider citing:
 ```bibtex
-@inproceedings{wang2024motionctrl,
-  title={Motionctrl: A unified and flexible motion controller for video generation},
-  author={Wang, Zhouxia and Yuan, Ziyang and Wang, Xintao and Li, Yaowei and Chen, Tianshui and Xia, Menghan and Luo, Ping and Shan, Ying},
-  booktitle={ACM SIGGRAPH 2024 Conference Papers},
-  pages={1--11},
+@inproceedings{objctrl2.5d,
+  title={ObjCtrl-2.5D: Training-free Object Control with Camera Poses},
+  author={Wang, Zhouxia and Lan, Yushi and Zhou, Shangchen and Loy, Chen Change},
+  booktitle={arXiv},
   year={2024}
 }
 ```
