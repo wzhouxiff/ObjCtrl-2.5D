@@ -76,7 +76,7 @@ If ObjCtrl2.5D is helpful, please help to ⭐ the <a href='https://github.com/wz
 If our work is useful for your research, please consider citing:
 ```bibtex
 @inproceedings{objctrl2.5d,
-  title={ObjCtrl-2.5D: Training-free Object Control with Camera Poses},
+  title={{ObjCtrl-2.5D}: Training-free Object Control with Camera Poses},
   author={Wang, Zhouxia and Lan, Yushi and Zhou, Shangchen and Loy, Chen Change},
   booktitle={arXiv},
   year={2024}
