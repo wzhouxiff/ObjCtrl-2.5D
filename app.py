@@ -19,6 +19,7 @@ import cv2
 
 import torch.nn.functional as F
 import torchvision
+from torchvision import transforms
 from einops import rearrange
 import tempfile
 
@@ -70,6 +71,11 @@ If ObjCtrl2.5D is helpful, please help to ⭐ the <a href='https://github.com/wz
 )](https://github.com/wzhouxiff/ObjCtrl-2.5D)
 
 ---
+
+📝 **License**
+<br>
+This project is licensed under <a href="https://github.com/wzhouxiff/ObjCtrl-2.5D/blob/main/LICENSE">S-Lab License 1.0</a>, 
+Redistribution and use for non-commercial purposes should follow this license.
 
 📝 **Citation**
 <br>
@@ -159,7 +165,7 @@ pipeline = get_pipeline(model_id, "unet", model_config['down_block_types'], mode
 # pipeline = None
 
 ### run the demo ##
-@spaces.GPU(duration=7)
+# @spaces.GPU(duration=7)
 def segment(canvas, image, logits):
     if logits is not None:
         logits *=  32.0
@@ -200,7 +206,7 @@ def segment(canvas, image, logits):
         
     return mask[0], {'image': masked_img, 'points': points}, logits / 32.0
 
-@spaces.GPU(duration=80)
+# @spaces.GPU(duration=80)
 def run_objctrl_2_5d(condition_image, 
                         mask, 
                         depth, 
@@ -487,8 +493,13 @@ def run_objctrl_2_5d(condition_image,
 
 
 # UI function
-@spaces.GPU(duration=7)
+# @spaces.GPU(duration=7)
 def process_image(raw_image, trajectory_points):
+    
+    transformer = transforms.Compose([
+        transforms.Resize(width),
+        transforms.CenterCrop((height, width))
+    ])
     
     image, points = raw_image['image'], raw_image['points']
     
@@ -500,8 +511,10 @@ def process_image(raw_image, trajectory_points):
         
         image = image.crop((x1, y1, x2, y2))
         image = image.resize((width, height))
+        # image = transformer(image)
     except:
         image = image.resize((width, height))
+        # image = transformer(image)
 
     depth = d_model_NK.infer_pil(image)    
     colored_depth = colorize(depth, cmap='gray_r') # [h, w, 4] 0-255
@@ -543,7 +556,7 @@ def draw_points_on_image(img, points):
     
     return img
 
-@spaces.GPU(duration=15)
+# @spaces.GPU(duration=15)
 def from_examples(raw_input, raw_image_points, canvas, seg_image_points, selected_points_text, camera_option, mask_bk):
     raw_image_points = ast.literal_eval(raw_image_points)
     seg_image_points = ast.literal_eval(seg_image_points)
@@ -684,7 +697,7 @@ with gr.Blocks() as demo:
             with gr.Column():
                 # Step 4: Trajectory to Camera Pose or Get Camera Pose
                 step4_dec = """
-                    <font size="4"><b>Step 4: Get Customized Camera Poses or <mark>Skip</mark></b></font>
+                    <font size="4"><b>Step 4: Get Customized Camera Poses or <mark>SKIP</mark></b></font>
                 """
                 step4 = gr.Markdown(step4_dec)
                 camera_pose_vis = gr.Plot(None, label='Camera Pose')
@@ -694,7 +707,7 @@ with gr.Blocks() as demo:
             with gr.Column():
                 # Step 5: Get the final generated video
                 step5_dec = """
-                    <font size="4"><b>Step 5: Get the final generated video</b></font>
+                    <font size="4"><b>Step 5: Get the Final Generated Video</b></font>
                 """
                 step5 = gr.Markdown(step5_dec)
                 generated_video = gr.Video(None, label='Generated Video')

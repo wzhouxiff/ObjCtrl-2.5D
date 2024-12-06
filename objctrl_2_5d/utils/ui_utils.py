@@ -120,6 +120,7 @@ def traj2cam(traj, depth, rescale):
     
     traj = np.array(traj)
     trajectory = interpolate_points(traj, num_frames)
+    # print(f'trajectory: {trajectory}')
     
     center_h_margin, center_w_margin = center_margin, center_margin
     depth_center = np.mean(depth[height//2-center_h_margin:height//2+center_h_margin, width//2-center_w_margin:width//2+center_w_margin])
