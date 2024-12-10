@@ -3,3 +3,4 @@ ckpt/
 checkpoints/*
 __pycache__/
 env.txt
+.DS_Store
