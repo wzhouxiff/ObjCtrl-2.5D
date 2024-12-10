@@ -37,7 +37,7 @@ enabling object motion control using an existing camera motion control I2V gener
 
 ## 📝 Changelog
 
-- [ ] 202412: Release both **code** and **demo** (🤗 [![HF Demo](https://img.shields.io/badge/Demo-orange
+- [x] 202412: Release both **code** and **demo** (🤗 [![HF Demo](https://img.shields.io/badge/Demo-orange
 )](https://huggingface.co/spaces/yslan/ObjCtrl-2.5D)) of ObjCtrl-2.5D.
 
 ## ⚙️ Environment
