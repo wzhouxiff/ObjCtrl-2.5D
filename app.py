@@ -84,7 +84,7 @@ If our work is useful for your research, please consider citing:
 @inproceedings{objctrl2.5d,
   title={{ObjCtrl-2.5D}: Training-free Object Control with Camera Poses},
   author={Wang, Zhouxia and Lan, Yushi and Zhou, Shangchen and Loy, Chen Change},
-  booktitle={arXiv},
+  booktitle={arXiv preprint arXiv:2412.07721},
   year={2024}
 }
 ```
