@@ -18,7 +18,7 @@
  [![Project Page](https://img.shields.io/badge/Project%20Page-green
 )](https://wzhouxiff.github.io/projects/ObjCtrl-2.5D/)
 &ensp; [![HF Demo](https://img.shields.io/badge/Demo-orange
-)](https://huggingface.co/spaces/yslan/ObjCtrl-2.5D) &ensp; [![Paper](https://img.shields.io/badge/Paper-gray)]() &ensp; [![arXiv](https://img.shields.io/badge/arXiv-red)]()
+)](https://huggingface.co/spaces/yslan/ObjCtrl-2.5D) &ensp; [![Paper](https://img.shields.io/badge/Paper-gray)](https://wzhouxiff.github.io/projects/ObjCtrl-2.5D/assets/ObjCtrl-2.5D.pdf) &ensp; [![arXiv](https://img.shields.io/badge/arXiv-red)](https://arxiv.org/pdf/2412.07721)
 
 </div>
 
