@@ -2,6 +2,7 @@
 
 ## ObjCtrl-2.5D: Training-free Object Control with Camera Pose
 
+<!--
 <div align='center'>
  <a href='https://wzhouxiff.github.io/'>Zhouxia Wang</a>
 &ensp; <a href='https://nirvanalan.github.io/'>Yushi Lan</a>
@@ -9,11 +10,13 @@
 &ensp; <a href='https://www.mmlab-ntu.com/person/ccloy/index.html'>Chen Change Loy</a>
 </div>
 
+
 <div align='center'>
  <a href='https://www.mmlab-ntu.com/'>S-Lab, NTU Singapore</a>
 </div>
 
 <br>
+-->
 
  [![Project Page](https://img.shields.io/badge/Project%20Page-green
 )](https://wzhouxiff.github.io/projects/ObjCtrl-2.5D/)
